@@ -26,6 +26,17 @@ export interface User {
   themeColor?: string;
 }
 
+export interface PresenceUser {
+  id: string;
+  fullName: string;
+  username: string;
+  role: string;
+  department: string;
+  isOnline: boolean;
+  lastActive: number | null;
+  status: UserPresenceStatus;
+}
+
 export interface Task {
   id: string;
   title: string;

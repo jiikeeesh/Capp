@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
@@ -15,7 +16,7 @@ import { User, Role } from '../types/cdash';
 import { STATUS_OPTIONS } from '../data/cdashInitialData';
 
 export const UsersScreen: React.FC = () => {
-  const { currentUser, users, colors, deleteUser } = useCdash();
+  const { currentUser, users, colors, deleteUser, refreshData, isRefreshing } = useCdash();
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -99,6 +100,14 @@ export const UsersScreen: React.FC = () => {
         style={styles.scrollArea}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refreshData}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
+          />
+        }
       >
         {/* Search */}
         <View style={[styles.searchBox, { backgroundColor: colors.bgSurface, borderColor: colors.borderColor }]}>

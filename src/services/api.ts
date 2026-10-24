@@ -1,11 +1,12 @@
-import { User, Task, AccountRequest, UserPresenceStatus } from '../types/cdash';
+import { User, Task, AccountRequest, UserPresenceStatus, PresenceUser } from '../types/cdash';
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/api';
 
 // Vercel Protection Bypass header
-export const VERCEL_BYPASS_SECRET = process.env.EXPO_PUBLIC_VERCEL_BYPASS || '';
+export const VERCEL_BYPASS_SECRET =
+  process.env.EXPO_PUBLIC_VERCEL_BYPASS || 'tz3pvttuWudvARfGcyXEzlxOx0Fqbt39';
 
 function getHeaders() {
   const headers: Record<string, string> = {
@@ -134,6 +135,43 @@ export const api = {
       return res.ok;
     } catch {
       return false;
+    }
+  },
+
+  async logoutPresence(userId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/presence`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ userId, action: 'logout' }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async fetchPresence(
+    userId: string,
+    role: string,
+    status?: string
+  ): Promise<{
+    onlineUsers: PresenceUser[];
+    offlineUsers: PresenceUser[];
+    totalAccessible: number;
+    totalOnline: number;
+  } | null> {
+    try {
+      const url = `${API_BASE_URL}/presence?userId=${encodeURIComponent(userId)}&role=${encodeURIComponent(
+        role
+      )}${status ? `&status=${encodeURIComponent(status)}` : ''}`;
+      const res = await fetch(url, {
+        headers: getHeaders(),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
     }
   },
 };

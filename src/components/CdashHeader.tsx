@@ -1,10 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
 
 export const CdashHeader: React.FC = () => {
-  const { colors, themeMode, toggleThemeMode, unreadCount, setIsNotifOpen, setActiveTab } = useCdash();
+  const {
+    colors,
+    themeMode,
+    toggleThemeMode,
+    unreadCount,
+    setIsNotifOpen,
+    setActiveTab,
+    refreshData,
+    isRefreshing,
+  } = useCdash();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderColor }]}>
@@ -22,6 +31,21 @@ export const CdashHeader: React.FC = () => {
 
       {/* Right actions */}
       <View style={styles.actions}>
+        {/* Live Refresh Button */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}
+          activeOpacity={0.7}
+          onPress={refreshData}
+          disabled={isRefreshing}
+          accessibilityLabel="Refresh Workspace"
+        >
+          {isRefreshing ? (
+            <ActivityIndicator size="small" color={colors.brand} />
+          ) : (
+            <Ionicons name="refresh-outline" size={17} color={colors.textPrimary} />
+          )}
+        </TouchableOpacity>
+
         {/* Notification Bell */}
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}

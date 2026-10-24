@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
@@ -13,7 +14,7 @@ import { NewRequestModal, RejectModal } from '../components/RequestModals';
 import { AccountRequest, RequestStatus, Role } from '../types/cdash';
 
 export const RequestsScreen: React.FC = () => {
-  const { currentUser, requests, users, colors, approveRequest, rejectRequest } = useCdash();
+  const { currentUser, requests, users, colors, approveRequest, rejectRequest, refreshData, isRefreshing } = useCdash();
 
   const [activeStatus, setActiveStatus] = useState<RequestStatus>('pending');
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
@@ -80,6 +81,14 @@ export const RequestsScreen: React.FC = () => {
         style={styles.scrollArea}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refreshData}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
+          />
+        }
       >
         {/* Status Tabs */}
         <View style={[styles.tabBar, { backgroundColor: colors.bgSurface, borderColor: colors.borderColor }]}>

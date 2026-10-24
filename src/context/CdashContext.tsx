@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import {
   User,
   Task,
@@ -9,6 +9,7 @@ import {
   ThemeMode,
   ColorPreset,
   TaskStatus,
+  PresenceUser,
 } from '../types/cdash';
 import {
   INITIAL_USERS,
@@ -91,6 +92,13 @@ interface CdashContextType {
   setIsAuthenticated: (val: boolean) => void;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+
+  // Real-time Presence & Live Refresh
+  onlineUsers: PresenceUser[];
+  offlineUsers: PresenceUser[];
+  totalOnline: number;
+  isRefreshing: boolean;
+  refreshData: () => Promise<void>;
 }
 
 const CdashContext = createContext<CdashContextType | undefined>(undefined);
@@ -111,32 +119,73 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  // Sync with remote Vercel API on mount if available
-  useEffect(() => {
-    let isMounted = true;
-    const fetchRemoteData = async () => {
-      const remoteTasks = await api.fetchTasks();
-      if (remoteTasks && remoteTasks.length > 0 && isMounted) {
-        setTasks(remoteTasks);
-      }
-      const remoteUsers = await api.fetchUsers();
-      if (remoteUsers && remoteUsers.length > 0 && isMounted) {
-        setUsers(remoteUsers);
-      }
-      const remoteReqs = await api.fetchRequests();
-      if (remoteReqs && remoteReqs.length > 0 && isMounted) {
-        setRequests(remoteReqs);
-      }
-    };
-    fetchRemoteData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
+  const [offlineUsers, setOfflineUsers] = useState<PresenceUser[]>([]);
+  const [totalOnline, setTotalOnline] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const currentUser = useMemo(() => {
     return users.find((u) => u.id === currentUserId) || users[0];
   }, [users, currentUserId]);
+
+  const fetchRemoteData = useCallback(async () => {
+    try {
+      const [remoteTasks, remoteUsers, remoteReqs] = await Promise.all([
+        api.fetchTasks(),
+        api.fetchUsers(),
+        api.fetchRequests(),
+      ]);
+
+      if (remoteTasks !== null) {
+        setTasks(remoteTasks);
+      }
+      if (remoteUsers !== null && remoteUsers.length > 0) {
+        setUsers(remoteUsers);
+      }
+      if (remoteReqs !== null) {
+        setRequests(remoteReqs);
+      }
+
+      // Fetch live presence from /api/presence
+      const userList = remoteUsers && remoteUsers.length > 0 ? remoteUsers : users;
+      const targetUser = userList.find((u) => u.id === currentUserId) || userList[0];
+      if (targetUser) {
+        const pres = await api.fetchPresence(targetUser.id, targetUser.role, userStatus);
+        if (pres) {
+          setOnlineUsers(pres.onlineUsers || []);
+          setOfflineUsers(pres.offlineUsers || []);
+          setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [currentUserId, userStatus, users]);
+
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    await fetchRemoteData();
+    setIsRefreshing(false);
+  };
+
+  // Sync with remote Vercel API on mount and every 10s for live updates
+  useEffect(() => {
+    let isMounted = true;
+    const poll = async () => {
+      if (isMounted) {
+        await fetchRemoteData();
+      }
+    };
+
+    const timer = setTimeout(poll, 50);
+    const interval = setInterval(poll, 10000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [fetchRemoteData]);
 
   const setCurrentUserRole = (role: Role) => {
     const targetUser = users.find((u) => u.role === role);
@@ -188,12 +237,19 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setThemeColorState(colorId);
   };
 
-  const setUserStatus = (status: UserPresenceStatus) => {
+  const setUserStatus = async (status: UserPresenceStatus) => {
     setUserStatusState(status);
     setUsers((prev) =>
       prev.map((u) => (u.id === currentUser.id ? { ...u, presenceStatus: status } : u))
     );
-    api.sendPresence(currentUser.id, status);
+    if (currentUser) {
+      const pres = await api.fetchPresence(currentUser.id, currentUser.role, status);
+      if (pres) {
+        setOnlineUsers(pres.onlineUsers || []);
+        setOfflineUsers(pres.offlineUsers || []);
+        setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+      }
+    }
   };
 
   const login = async (
@@ -207,41 +263,45 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setUsers((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
       setCurrentUserId(u.id);
       setIsAuthenticated(true);
+      // Immediately touch presence and fetch data
+      api.fetchPresence(u.id, u.role, 'active').then((pres) => {
+        if (pres) {
+          setOnlineUsers(pres.onlineUsers || []);
+          setOfflineUsers(pres.offlineUsers || []);
+          setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+        }
+      });
       return { success: true };
     }
 
-    // 2. Offline / Demo fallback: Check seeded credentials
-    // Admin: jiikeeesh / J!kesh9803
-    // Moderator: sarah_lead / pass123
-    // User: marcus_k / pass123
+    // 2. Fallback: Check loaded users
     const matched = users.find(
       (u) => u.username.toLowerCase() === username.toLowerCase()
     );
 
-    const validPasswords: Record<string, string> = {
-      jiikeeesh: 'J!kesh9803',
-      sarah_lead: 'pass123',
-      alex_ops: 'pass123',
-      marcus_k: 'pass123',
-      elena_ux: 'pass123',
-      liam_qa: 'pass123',
-    };
-
-    const expectedPass = validPasswords[matched?.username || ''] || 'password';
-
-    if (matched && (password === expectedPass || password === 'J!kesh9803' || password === 'admin' || password === 'pass123')) {
+    if (matched && (password === 'J!kesh9803' || password === 'admin' || password === 'pass123')) {
       setCurrentUserId(matched.id);
       setIsAuthenticated(true);
+      api.fetchPresence(matched.id, matched.role, 'active').then((pres) => {
+        if (pres) {
+          setOnlineUsers(pres.onlineUsers || []);
+          setOfflineUsers(pres.offlineUsers || []);
+          setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+        }
+      });
       return { success: true };
     }
 
     return {
       success: false,
-      error: remoteRes.error || 'Invalid credentials. Use demo accounts or check your password.',
+      error: remoteRes.error || 'Invalid credentials. Please check your username and password.',
     };
   };
 
   const logout = () => {
+    if (currentUser) {
+      api.logoutPresence(currentUser.id);
+    }
     setIsAuthenticated(false);
     setIsProfileOpen(false);
   };
@@ -457,6 +517,12 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsAuthenticated,
         login,
         logout,
+
+        onlineUsers,
+        offlineUsers,
+        totalOnline,
+        isRefreshing,
+        refreshData,
       }}
     >
       {children}

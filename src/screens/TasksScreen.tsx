@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
@@ -15,7 +16,7 @@ import { TaskDetailModal, TaskFormModal, StatusModal } from '../components/TaskM
 import { Task } from '../types/cdash';
 
 export const TasksScreen: React.FC = () => {
-  const { currentUser, tasks, colors, deleteTask } = useCdash();
+  const { currentUser, tasks, colors, deleteTask, refreshData, isRefreshing } = useCdash();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -98,6 +99,14 @@ export const TasksScreen: React.FC = () => {
         style={styles.scrollArea}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refreshData}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
+          />
+        }
       >
         {/* Search Bar */}
         <View style={[styles.searchBox, { backgroundColor: colors.bgSurface, borderColor: colors.borderColor }]}>

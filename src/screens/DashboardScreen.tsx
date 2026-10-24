@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +19,7 @@ import { NewRequestModal } from '../components/RequestModals';
 import { Task } from '../types/cdash';
 
 export const DashboardScreen: React.FC = () => {
-  const { currentUser, tasks, users, requests, colors, setActiveTab } = useCdash();
+  const { currentUser, tasks, users, requests, colors, setActiveTab, refreshData, isRefreshing } = useCdash();
 
   // Modals state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -61,6 +62,14 @@ export const DashboardScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: colors.bgPage }]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={refreshData}
+          tintColor={colors.brand}
+          colors={[colors.brand]}
+        />
+      }
     >
       {/* Welcome Banner matching cdash */}
       <LinearGradient
