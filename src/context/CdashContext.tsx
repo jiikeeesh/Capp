@@ -90,7 +90,7 @@ interface CdashContextType {
   // Authentication
   isAuthenticated: boolean;
   setIsAuthenticated: (val: boolean) => void;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string; isFirstLogin?: boolean }>;
   logout: () => void;
 
   // Real-time Presence & Live Refresh
@@ -255,11 +255,22 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const login = async (
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; isFirstLogin?: boolean }> => {
     // 1. First attempt to call the remote Vercel API
     const remoteRes = await api.login(username, password);
     if (remoteRes.success && remoteRes.user) {
       const u = remoteRes.user;
+
+      // FIRST-LOGIN ENFORCEMENT: First login & password change must be performed on the Web
+      if (u.isFirstLogin) {
+        return {
+          success: false,
+          isFirstLogin: true,
+          error:
+            'Initial login and password change must be completed on the Web portal. Only the web version allows setting your new password. Once completed on the web, you can sign in to the mobile app.',
+        };
+      }
+
       setUsers((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
       setCurrentUserId(u.id);
       setIsAuthenticated(true);
@@ -280,6 +291,15 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     if (matched && (password === 'J!kesh9803' || password === 'admin' || password === 'pass123')) {
+      if (matched.isFirstLogin) {
+        return {
+          success: false,
+          isFirstLogin: true,
+          error:
+            'Initial login and password change must be completed on the Web portal. Only the web version allows setting your new password. Once completed on the web, you can sign in to the mobile app.',
+        };
+      }
+
       setCurrentUserId(matched.id);
       setIsAuthenticated(true);
       api.fetchPresence(matched.id, matched.role, 'active').then((pres) => {

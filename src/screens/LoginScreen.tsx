@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
@@ -21,9 +22,11 @@ export const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [firstLoginRequired, setFirstLoginRequired] = useState(false);
 
   const handleSignIn = async () => {
     setError('');
+    setFirstLoginRequired(false);
     if (!username.trim() || !password.trim()) {
       setError('Please enter both username and password.');
       return;
@@ -34,7 +37,11 @@ export const LoginScreen: React.FC = () => {
     setLoading(false);
 
     if (!result.success) {
-      setError(result.error || 'Login failed. Please check credentials.');
+      if (result.isFirstLogin) {
+        setFirstLoginRequired(true);
+      } else {
+        setError(result.error || 'Login failed. Please check credentials.');
+      }
     }
   };
 
@@ -141,6 +148,45 @@ export const LoginScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
+            {/* First Login Setup Required on Web Banner */}
+            {firstLoginRequired ? (
+              <View
+                style={[
+                  styles.firstLoginBox,
+                  {
+                    backgroundColor: colors.warningLight,
+                    borderColor: colors.warning,
+                  },
+                ]}
+              >
+                <View style={styles.firstLoginHeader}>
+                  <Ionicons name="globe-outline" size={20} color={colors.warning} />
+                  <Text style={[styles.firstLoginTitle, { color: colors.warning }]}>
+                    Web Password Setup Required
+                  </Text>
+                </View>
+                <Text style={[styles.firstLoginBody, { color: colors.textPrimary }]}>
+                  This is your first login. To protect your account, initial login and password creation must be performed on the Web Portal.
+                </Text>
+                <Text style={[styles.firstLoginSubtext, { color: colors.textMuted }]}>
+                  Password changes are only supported on the Web version. Once your new password is set on web, return here to sign in.
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.openWebBtn, { backgroundColor: colors.brand }]}
+                  onPress={() =>
+                    Linking.openURL(
+                      'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/login'
+                    )
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="open-outline" size={16} color="#ffffff" />
+                  <Text style={styles.openWebBtnText}>Open Web to Set Password →</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             {/* Error Message */}
             {error ? (
               <View style={[styles.errorBox, { backgroundColor: colors.errorLight }]}>
@@ -167,6 +213,23 @@ export const LoginScreen: React.FC = () => {
                   <Text style={styles.submitBtnText}>Sign In</Text>
                 </View>
               )}
+            </TouchableOpacity>
+
+            {/* Web Portal Link Note */}
+            <TouchableOpacity
+              style={styles.webHintRow}
+              onPress={() =>
+                Linking.openURL(
+                  'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/login'
+                )
+              }
+              activeOpacity={0.7}
+            >
+              <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.webHintText, { color: colors.textMuted }]}>
+                New user? Initial login & password change is web-only.{' '}
+                <Text style={{ color: colors.brand, fontWeight: '700' }}>Open Web</Text>
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -376,5 +439,57 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+  },
+  firstLoginBox: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 8,
+    marginBottom: 6,
+  },
+  firstLoginHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  firstLoginTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  firstLoginBody: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  firstLoginSubtext: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  openWebBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  openWebBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  webHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingHorizontal: 8,
+  },
+  webHintText: {
+    fontSize: 11,
+    textAlign: 'center',
   },
 });

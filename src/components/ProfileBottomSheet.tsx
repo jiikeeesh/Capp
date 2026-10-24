@@ -128,6 +128,15 @@ export const ProfileBottomSheet: React.FC = () => {
                       {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Active Workspace
                     </Text>
                   </View>
+
+                  <View style={styles.detailRow}>
+                    <View style={[styles.iconBox, { backgroundColor: colors.bgSurface }]}>
+                      <Ionicons name="shield-checkmark-outline" size={16} color={colors.textSecondary} />
+                    </View>
+                    <Text style={[styles.detailText, { color: colors.textMuted, fontSize: 11 }]}>
+                      Password changes can only be made on the Web version.
+                    </Text>
+                  </View>
                 </View>
 
                 {/* User Presence Status Selector */}
