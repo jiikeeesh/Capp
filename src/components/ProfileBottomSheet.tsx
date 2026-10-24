@@ -27,6 +27,8 @@ export const ProfileBottomSheet: React.FC = () => {
     userStatus,
     setUserStatus,
     logout,
+    hasNotificationPermission,
+    requestNotificationAccess,
   } = useCdash();
 
   if (!isProfileOpen) return null;
@@ -231,6 +233,37 @@ export const ProfileBottomSheet: React.FC = () => {
                         </TouchableOpacity>
                       );
                     })}
+                  </View>
+                </View>
+
+                {/* Device Notifications Access Card */}
+                <View style={[styles.sectionCard, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <Ionicons name="notifications-outline" size={18} color={colors.brand} />
+                      <View>
+                        <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontSize: 13 }]}>
+                          Device Notifications
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                          {hasNotificationPermission ? 'Enabled • Active' : 'Access needed for alerts'}
+                        </Text>
+                      </View>
+                    </View>
+                    {!hasNotificationPermission ? (
+                      <TouchableOpacity
+                        style={[styles.modePill, { backgroundColor: colors.brand }]}
+                        onPress={requestNotificationAccess}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.modePillText, { color: '#ffffff', fontWeight: '700' }]}>Enable</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                        <Text style={{ fontSize: 12, color: colors.success, fontWeight: '600' }}>Active</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 

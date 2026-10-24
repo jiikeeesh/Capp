@@ -19,6 +19,7 @@ import {
   PRESET_COLORS,
 } from '../data/cdashInitialData';
 import { api } from '../services/api';
+import { requestNotificationPermissions, sendLocalNotification } from '../services/notifications';
 
 export interface ThemeColors {
   brand: string;
@@ -57,6 +58,7 @@ interface CdashContextType {
   addTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
+  addCommentToTask: (taskId: string, commentText: string, newStatus?: TaskStatus) => Promise<void>;
   deleteTask: (id: string) => void;
 
   requests: AccountRequest[];
@@ -99,6 +101,10 @@ interface CdashContextType {
   totalOnline: number;
   isRefreshing: boolean;
   refreshData: () => Promise<void>;
+
+  // Push / System Notifications
+  hasNotificationPermission: boolean;
+  requestNotificationAccess: () => Promise<boolean>;
 }
 
 const CdashContext = createContext<CdashContextType | undefined>(undefined);
@@ -159,6 +165,22 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [offlineUsers, setOfflineUsers] = useState<PresenceUser[]>([]);
   const [totalOnline, setTotalOnline] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [hasNotificationPermission, setHasNotificationPermission] = useState<boolean>(false);
+
+  useEffect(() => {
+    requestNotificationPermissions().then((granted) => {
+      setHasNotificationPermission(granted);
+    });
+  }, []);
+
+  const requestNotificationAccess = async () => {
+    const granted = await requestNotificationPermissions();
+    setHasNotificationPermission(granted);
+    if (granted) {
+      sendLocalNotification('Notifications Active', 'You will receive live alerts on tasks and team activity.');
+    }
+    return granted;
+  };
 
   const currentUser = useMemo(() => {
     return users.find((u) => u.id === currentUserId) || users[0];
@@ -173,7 +195,24 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ]);
 
       if (remoteTasks !== null) {
-        setTasks(remoteTasks);
+        const normalizedTasks = remoteTasks.map((t) => {
+          let parsedNotes: string[] = [];
+          if (Array.isArray(t.notes)) {
+            parsedNotes = t.notes;
+          } else if (typeof t.notes === 'string' && t.notes.trim()) {
+            try {
+              const p = JSON.parse(t.notes);
+              parsedNotes = Array.isArray(p) ? p : [t.notes];
+            } catch {
+              parsedNotes = [t.notes];
+            }
+          }
+          return {
+            ...t,
+            notes: parsedNotes,
+          };
+        });
+        setTasks(normalizedTasks);
       }
       if (remoteUsers !== null && remoteUsers.length > 0) {
         setUsers(remoteUsers);
@@ -449,6 +488,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       linkTab: 'tasks',
     };
     setNotifications((prev) => [newNotif, ...prev]);
+    sendLocalNotification(newNotif.title, newNotif.message, { taskId: newTask.id });
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
@@ -478,6 +518,58 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         linkTab: 'tasks',
       };
       setNotifications((prev) => [newNotif, ...prev]);
+      sendLocalNotification(newNotif.title, newNotif.message, { taskId: id });
+    }
+  };
+
+  const addCommentToTask = async (taskId: string, commentText: string, newStatus?: TaskStatus) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    let currentNotes: string[] = [];
+    if (Array.isArray(task.notes)) {
+      currentNotes = [...task.notes];
+    } else if (typeof task.notes === 'string' && task.notes.trim()) {
+      try {
+        const p = JSON.parse(task.notes);
+        currentNotes = Array.isArray(p) ? p : [task.notes];
+      } catch {
+        currentNotes = [task.notes];
+      }
+    }
+
+    const trimmed = commentText.trim();
+    const formattedComment = trimmed
+      ? `[${new Date().toLocaleDateString()} - ${currentUser?.fullName || 'User'}] ${trimmed}`
+      : null;
+
+    const updatedNotes = formattedComment ? [...currentNotes, formattedComment] : currentNotes;
+    const finalStatus = newStatus || task.status;
+    const now = new Date().toISOString();
+
+    const updates: Partial<Task> = {
+      notes: updatedNotes,
+      status: finalStatus,
+      updatedAt: now,
+    };
+
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
+    );
+    api.updateTask(taskId, updates);
+
+    if (formattedComment) {
+      const newNotif: AppNotification = {
+        id: `notif_${Date.now()}`,
+        title: `Comment Added: "${task.title}"`,
+        message: `${currentUser.fullName}: "${trimmed}"`,
+        type: 'task_updated',
+        isRead: false,
+        createdAt: now,
+        linkTab: 'tasks',
+      };
+      setNotifications((prev) => [newNotif, ...prev]);
+      sendLocalNotification(newNotif.title, newNotif.message, { taskId });
     }
   };
 
@@ -587,6 +679,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addTask,
         updateTask,
         updateTaskStatus,
+        addCommentToTask,
         deleteTask,
 
         requests,
@@ -627,6 +720,9 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         totalOnline,
         isRefreshing,
         refreshData,
+
+        hasNotificationPermission,
+        requestNotificationAccess,
       }}
     >
       {children}

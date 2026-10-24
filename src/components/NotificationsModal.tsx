@@ -23,6 +23,8 @@ export const NotificationsModal: React.FC = () => {
     unreadCount,
     colors,
     setActiveTab,
+    hasNotificationPermission,
+    requestNotificationAccess,
   } = useCdash();
 
   if (!isNotifOpen) return null;
@@ -94,6 +96,30 @@ export const NotificationsModal: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
               >
+                {/* Device Notification Access Request Banner */}
+                {!hasNotificationPermission && (
+                  <View style={[styles.permBanner, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}>
+                    <View style={[styles.permIconWrap, { backgroundColor: colors.warningLight }]}>
+                      <Ionicons name="notifications-outline" size={18} color={colors.warning} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.permTitle, { color: colors.textPrimary }]}>
+                        Device Notifications
+                      </Text>
+                      <Text style={[styles.permSubtitle, { color: colors.textMuted }]}>
+                        Allow notifications on this device to get instant task updates.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.permBtn, { backgroundColor: colors.brand }]}
+                      onPress={requestNotificationAccess}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.permBtnText}>Enable</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
                 {notifications.length === 0 ? (
                   <View style={styles.emptyWrap}>
                     <Ionicons name="notifications-off-outline" size={36} color={colors.textMuted} />
@@ -287,5 +313,39 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  permBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  permIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  permSubtitle: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  permBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  permBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

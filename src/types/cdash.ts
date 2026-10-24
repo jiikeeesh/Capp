@@ -49,7 +49,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   assigneeIds: string[];
-  notes?: string;
+  notes?: string[] | string;
 }
 
 export interface AccountRequest {

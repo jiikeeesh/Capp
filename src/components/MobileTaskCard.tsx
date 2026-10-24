@@ -159,6 +159,27 @@ export const MobileTaskCard: React.FC<MobileTaskCardProps> = ({
             </Text>
           </View>
         )}
+
+        {/* Comment Count Chip */}
+        {(() => {
+          let count = 0;
+          if (Array.isArray(task.notes)) count = task.notes.length;
+          else if (typeof task.notes === 'string' && task.notes.trim()) {
+            try {
+              const parsed = JSON.parse(task.notes);
+              count = Array.isArray(parsed) ? parsed.length : 1;
+            } catch {
+              count = 1;
+            }
+          }
+          if (count === 0) return null;
+          return (
+            <View style={[styles.chip, { backgroundColor: colors.chipBg }]}>
+              <Ionicons name="chatbubble-outline" size={12} color={colors.textSecondary} />
+              <Text style={[styles.chipText, { color: colors.textSecondary }]}>{count}</Text>
+            </View>
+          );
+        })()}
       </View>
 
       {/* Mobile Action Buttons Bar */}
