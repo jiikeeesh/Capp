@@ -21,6 +21,7 @@ export interface User {
   department: string;
   createdBy?: string;
   createdAt: string;
+  isFirstLogin?: boolean;
   presenceStatus?: UserPresenceStatus;
   themeMode?: ThemeMode;
   themeColor?: string;

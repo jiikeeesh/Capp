@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,9 @@ interface TaskDetailModalProps {
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onUpdateStatus }) => {
-  const { colors, users } = useCdash();
+  const { colors, users, onlineUsers } = useCdash();
+
+  const onlineIds = useMemo(() => new Set(onlineUsers.map((o) => o.id)), [onlineUsers]);
 
   if (!task) return null;
 
@@ -87,12 +89,42 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                 <View style={styles.section}>
                   <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>ASSIGNEES</Text>
                   <View style={styles.assigneesWrap}>
-                    {assignees.map((a) => (
-                      <View key={a.id} style={[styles.assigneeBadge, { backgroundColor: colors.bgSurfaceSub }]}>
-                        <Ionicons name="person-circle-outline" size={16} color={colors.brand} />
-                        <Text style={[styles.assigneeText, { color: colors.textPrimary }]}>{a.fullName}</Text>
-                      </View>
-                    ))}
+                    {assignees.map((a) => {
+                      const isOnline = onlineIds.has(a.id);
+                      return (
+                        <View
+                          key={a.id}
+                          style={[
+                            styles.assigneeBadge,
+                            {
+                              backgroundColor: colors.bgSurfaceSub,
+                              borderColor: isOnline ? colors.success : colors.borderColor,
+                              borderWidth: isOnline ? 1 : 0,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="person-circle-outline"
+                            size={16}
+                            color={isOnline ? colors.success : colors.brand}
+                          />
+                          <Text style={[styles.assigneeText, { color: colors.textPrimary }]}>
+                            {a.fullName}
+                          </Text>
+                          {isOnline && (
+                            <View
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: colors.success,
+                                marginLeft: 4,
+                              }}
+                            />
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -139,7 +171,9 @@ interface TaskFormModalProps {
 }
 
 export const TaskFormModal: React.FC<TaskFormModalProps> = ({ visible, taskToEdit, onClose }) => {
-  const { colors, currentUser, users, addTask, updateTask } = useCdash();
+  const { colors, currentUser, users, onlineUsers, addTask, updateTask } = useCdash();
+
+  const onlineIds = useMemo(() => new Set(onlineUsers.map((o) => o.id)), [onlineUsers]);
 
   const [title, setTitle] = useState(taskToEdit ? taskToEdit.title : '');
   const [description, setDescription] = useState(taskToEdit ? taskToEdit.description : '');
@@ -324,6 +358,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ visible, taskToEdi
                 <View style={styles.assigneeList}>
                   {users.map((u) => {
                     const isSelected = selectedAssignees.includes(u.id);
+                    const isOnline = onlineIds.has(u.id);
                     return (
                       <TouchableOpacity
                         key={u.id}
@@ -341,9 +376,15 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ visible, taskToEdi
                           size={18}
                           color={isSelected ? colors.brand : colors.textSecondary}
                         />
-                        <Text style={[styles.assigneeRowText, { color: colors.textPrimary }]}>
+                        <Text style={[styles.assigneeRowText, { color: colors.textPrimary, flex: 1 }]}>
                           {u.fullName} ({u.role})
                         </Text>
+                        {isOnline && (
+                          <View style={[styles.onlineTag, { backgroundColor: colors.successLight }]}>
+                            <View style={[styles.onlineDotMini, { backgroundColor: colors.success }]} />
+                            <Text style={[styles.onlineTagText, { color: colors.success }]}>Online</Text>
+                          </View>
+                        )}
                       </TouchableOpacity>
                     );
                   })}
@@ -641,5 +682,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+  },
+  onlineTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  onlineDotMini: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  onlineTagText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
