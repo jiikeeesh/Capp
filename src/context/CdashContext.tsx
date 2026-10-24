@@ -182,21 +182,27 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setRequests(remoteReqs);
       }
 
-      // Fetch live presence from /api/presence
-      const userList = remoteUsers && remoteUsers.length > 0 ? remoteUsers : users;
-      const targetUser = userList.find((u) => u.id === currentUserId) || userList[0];
-      if (targetUser) {
-        const pres = await api.fetchPresence(targetUser.id, targetUser.role, userStatus);
-        if (pres) {
-          setOnlineUsers(pres.onlineUsers || []);
-          setOfflineUsers(pres.offlineUsers || []);
-          setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+      // Only touch and fetch presence if the user is currently authenticated
+      if (isAuthenticated) {
+        const userList = remoteUsers && remoteUsers.length > 0 ? remoteUsers : users;
+        const targetUser = userList.find((u) => u.id === currentUserId) || userList[0];
+        if (targetUser) {
+          const pres = await api.fetchPresence(targetUser.id, targetUser.role, userStatus);
+          if (pres) {
+            setOnlineUsers(pres.onlineUsers || []);
+            setOfflineUsers(pres.offlineUsers || []);
+            setTotalOnline(pres.totalOnline ?? pres.onlineUsers?.length ?? 0);
+          }
         }
+      } else {
+        setOnlineUsers([]);
+        setOfflineUsers([]);
+        setTotalOnline(0);
       }
     } catch {
       // ignore
     }
-  }, [currentUserId, userStatus, users]);
+  }, [currentUserId, userStatus, users, isAuthenticated]);
 
   const refreshData = async () => {
     setIsRefreshing(true);
@@ -388,14 +394,18 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   };
 
-  const logout = () => {
+  const logout = async () => {
     if (currentUser) {
       // Save last theme preferences to server before logging out
       api.updateUser(currentUser.id, { themeMode, themeColor });
-      api.logoutPresence(currentUser.id);
+      await api.logoutPresence(currentUser.id);
     }
     // Retain the last chosen theme mode and color in local storage & memory
     persistTheme(themeMode, themeColor);
+    // Clear presence state immediately so signed out user does not show online
+    setOnlineUsers([]);
+    setOfflineUsers([]);
+    setTotalOnline(0);
     setIsAuthenticated(false);
     setIsProfileOpen(false);
   };

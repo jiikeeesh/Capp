@@ -21,7 +21,6 @@ export const UsersScreen: React.FC = () => {
     users,
     onlineUsers,
     totalOnline,
-    userStatus,
     colors,
     deleteUser,
     refreshData,
@@ -47,7 +46,7 @@ export const UsersScreen: React.FC = () => {
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       if (roleFilter === 'online') {
-        const isOnline = onlineMap.has(u.id) || (u.id === currentUser.id);
+        const isOnline = onlineMap.has(u.id);
         if (!isOnline) return false;
       } else if (roleFilter !== 'all' && u.role !== roleFilter) {
         return false;
@@ -64,7 +63,7 @@ export const UsersScreen: React.FC = () => {
       }
       return true;
     });
-  }, [users, roleFilter, search, onlineMap, currentUser.id]);
+  }, [users, roleFilter, search, onlineMap]);
 
   const handleDelete = (user: User) => {
     if (user.id === currentUser.id) {
@@ -288,11 +287,10 @@ export const UsersScreen: React.FC = () => {
             const badge = roleBadgeStyle(user.role);
             const isMe = user.id === currentUser.id;
 
-            // Live presence detection
-            const isOnline = onlineMap.has(user.id) || isMe;
+            // Live presence detection based on real-time server presence
             const presence = onlineMap.get(user.id);
-            const userStatusType: UserPresenceStatus =
-              presence?.status || (isMe ? userStatus : 'active');
+            const isOnline = !!presence && presence.isOnline;
+            const userStatusType: UserPresenceStatus = presence?.status || 'offline';
             const statusCfg = getStatusConfig(isOnline, userStatusType, user.isFirstLogin);
 
             return (
