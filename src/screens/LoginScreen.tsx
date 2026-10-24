@@ -38,18 +38,6 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setError('');
-    setLoading(true);
-    const result = await login(user, pass);
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error || 'Login failed.');
-    }
-  };
-
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.bgPage }]}
@@ -180,36 +168,6 @@ export const LoginScreen: React.FC = () => {
                 </View>
               )}
             </TouchableOpacity>
-          </View>
-
-          {/* Quick Demo Credentials for Fast Testing */}
-          <View style={[styles.demoSection, { borderTopColor: colors.borderColor }]}>
-            <Text style={[styles.demoTitle, { color: colors.textMuted }]}>QUICK ONE-TAP DEMO SIGN IN</Text>
-            <View style={styles.demoChips}>
-              <TouchableOpacity
-                style={[styles.demoChip, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}
-                onPress={() => handleQuickLogin('jiikeeesh', 'J!kesh9803')}
-              >
-                <Text style={[styles.demoRole, { color: '#ef4444' }]}>👑 Admin</Text>
-                <Text style={[styles.demoUser, { color: colors.textPrimary }]}>jiikeeesh</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.demoChip, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}
-                onPress={() => handleQuickLogin('sarah_lead', 'pass123')}
-              >
-                <Text style={[styles.demoRole, { color: '#8b5cf6' }]}>🛡️ Moderator</Text>
-                <Text style={[styles.demoUser, { color: colors.textPrimary }]}>sarah_lead</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.demoChip, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}
-                onPress={() => handleQuickLogin('marcus_k', 'pass123')}
-              >
-                <Text style={[styles.demoRole, { color: '#3b82f6' }]}>💼 User</Text>
-                <Text style={[styles.demoUser, { color: colors.textPrimary }]}>marcus_k</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </ScrollView>

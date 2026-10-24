@@ -4,7 +4,7 @@ export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/api';
 
-// Optional Vercel Protection Bypass header if set by user
+// Vercel Protection Bypass header
 export const VERCEL_BYPASS_SECRET = process.env.EXPO_PUBLIC_VERCEL_BYPASS || '';
 
 function getHeaders() {
@@ -13,6 +13,7 @@ function getHeaders() {
   };
   if (VERCEL_BYPASS_SECRET) {
     headers['x-vercel-protection-bypass'] = VERCEL_BYPASS_SECRET;
+    headers['x-vercel-set-bypass-cookie'] = 'samesite=none';
   }
   return headers;
 }

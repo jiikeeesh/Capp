@@ -19,7 +19,6 @@ export const ProfileBottomSheet: React.FC = () => {
     isProfileOpen,
     setIsProfileOpen,
     currentUser,
-    setCurrentUserRole,
     colors,
     themeMode,
     toggleThemeMode,
@@ -96,40 +95,6 @@ export const ProfileBottomSheet: React.FC = () => {
                         {currentUser.role.toUpperCase()}
                       </Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* Switch Role Quick Bar (Tester friendly) */}
-                <View style={[styles.sectionCard, { backgroundColor: colors.bgSurfaceSub, borderColor: colors.borderColor }]}>
-                  <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-                    SWITCH ROLE (FOR PREVIEW)
-                  </Text>
-                  <View style={styles.roleBtnGroup}>
-                    {(['admin', 'moderator', 'user'] as Role[]).map((r) => {
-                      const isActive = currentUser.role === r;
-                      return (
-                        <TouchableOpacity
-                          key={r}
-                          style={[
-                            styles.roleBtn,
-                            {
-                              backgroundColor: isActive ? colors.brand : colors.bgSurface,
-                              borderColor: isActive ? colors.brand : colors.borderColor,
-                            },
-                          ]}
-                          onPress={() => setCurrentUserRole(r)}
-                        >
-                          <Text
-                            style={[
-                              styles.roleBtnText,
-                              { color: isActive ? '#ffffff' : colors.textPrimary },
-                            ]}
-                          >
-                            {r.charAt(0).toUpperCase() + r.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
                   </View>
                 </View>
 
