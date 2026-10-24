@@ -39,8 +39,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "81e07333-bdf1-4135-8886-efadb4654574"
+        "projectId": "586f4a93-bd40-479e-9921-9667c90e653b"
       }
-    }
+    },
+    "owner": "jiikeeesh"
   }
 }
