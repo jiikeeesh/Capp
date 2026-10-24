@@ -103,6 +103,42 @@ interface CdashContextType {
 
 const CdashContext = createContext<CdashContextType | undefined>(undefined);
 
+// Theme persistence helpers
+const getPersistedThemeMode = (): ThemeMode => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const m = localStorage.getItem('cdash_theme_mode');
+      if (m === 'light' || m === 'dark') return m as ThemeMode;
+    }
+  } catch {
+    // ignore
+  }
+  return 'light';
+};
+
+const getPersistedThemeColor = (): string => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const c = localStorage.getItem('cdash_theme_color');
+      if (c) return c;
+    }
+  } catch {
+    // ignore
+  }
+  return 'indigo';
+};
+
+const persistTheme = (mode: ThemeMode, color: string) => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('cdash_theme_mode', mode);
+      localStorage.setItem('cdash_theme_color', color);
+    }
+  } catch {
+    // ignore
+  }
+};
+
 export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUserId, setCurrentUserId] = useState<string>('usr_admin_jiikeeesh');
@@ -110,8 +146,8 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [requests, setRequests] = useState<AccountRequest[]>(INITIAL_REQUESTS);
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
 
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
-  const [themeColor, setThemeColorState] = useState<string>('indigo');
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getPersistedThemeMode);
+  const [themeColor, setThemeColorState] = useState<string>(getPersistedThemeColor);
   const [userStatus, setUserStatusState] = useState<UserPresenceStatus>('active');
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks' | 'users' | 'requests'>('dashboard');
@@ -230,11 +266,28 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [themeMode, activePreset]);
 
   const toggleThemeMode = () => {
-    setThemeMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setThemeMode((prev) => {
+      const nextMode: ThemeMode = prev === 'light' ? 'dark' : 'light';
+      persistTheme(nextMode, themeColor);
+      if (currentUser) {
+        api.updateUser(currentUser.id, { themeMode: nextMode });
+        setUsers((all) =>
+          all.map((u) => (u.id === currentUser.id ? { ...u, themeMode: nextMode } : u))
+        );
+      }
+      return nextMode;
+    });
   };
 
   const setThemeColor = (colorId: string) => {
     setThemeColorState(colorId);
+    persistTheme(themeMode, colorId);
+    if (currentUser) {
+      api.updateUser(currentUser.id, { themeColor: colorId });
+      setUsers((all) =>
+        all.map((u) => (u.id === currentUser.id ? { ...u, themeColor: colorId } : u))
+      );
+    }
   };
 
   const setUserStatus = async (status: UserPresenceStatus) => {
@@ -271,6 +324,15 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
       }
 
+      // Sync user's saved theme from database
+      if (u.themeMode === 'light' || u.themeMode === 'dark') {
+        setThemeMode(u.themeMode);
+      }
+      if (u.themeColor) {
+        setThemeColorState(u.themeColor);
+      }
+      persistTheme(u.themeMode || themeMode, u.themeColor || themeColor);
+
       setUsers((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
       setCurrentUserId(u.id);
       setIsAuthenticated(true);
@@ -300,6 +362,14 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
       }
 
+      if (matched.themeMode === 'light' || matched.themeMode === 'dark') {
+        setThemeMode(matched.themeMode);
+      }
+      if (matched.themeColor) {
+        setThemeColorState(matched.themeColor);
+      }
+      persistTheme(matched.themeMode || themeMode, matched.themeColor || themeColor);
+
       setCurrentUserId(matched.id);
       setIsAuthenticated(true);
       api.fetchPresence(matched.id, matched.role, 'active').then((pres) => {
@@ -320,8 +390,12 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const logout = () => {
     if (currentUser) {
+      // Save last theme preferences to server before logging out
+      api.updateUser(currentUser.id, { themeMode, themeColor });
       api.logoutPresence(currentUser.id);
     }
+    // Retain the last chosen theme mode and color in local storage & memory
+    persistTheme(themeMode, themeColor);
     setIsAuthenticated(false);
     setIsProfileOpen(false);
   };

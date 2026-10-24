@@ -113,6 +113,20 @@ export const api = {
     }
   },
 
+  async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  },
+
   async fetchRequests(): Promise<AccountRequest[] | null> {
     try {
       const res = await fetch(`${API_BASE_URL}/requests`, {
