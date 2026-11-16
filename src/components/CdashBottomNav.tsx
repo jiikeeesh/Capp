@@ -60,6 +60,19 @@ export const CdashBottomNav: React.FC = () => {
         />
       </TouchableOpacity>
 
+      {/* Calendar (All Users) */}
+      <TouchableOpacity
+        style={styles.tab}
+        activeOpacity={0.7}
+        onPress={() => setActiveTab('calendar')}
+      >
+        <Ionicons
+          name={activeTab === 'calendar' ? 'calendar' : 'calendar-outline'}
+          size={24}
+          color={activeTab === 'calendar' ? colors.brand : colors.textMuted}
+        />
+      </TouchableOpacity>
+
       {/* Users (Admin & Moderator) */}
       {!isUserOnly && (
         <TouchableOpacity

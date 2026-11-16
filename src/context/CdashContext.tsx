@@ -10,6 +10,7 @@ import {
   ColorPreset,
   TaskStatus,
   PresenceUser,
+  ActiveTab,
 } from '../types/cdash';
 import {
   INITIAL_USERS,
@@ -55,7 +56,7 @@ interface CdashContextType {
   deleteUser: (id: string) => void;
 
   tasks: Task[];
-  addTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> & { isRequest?: boolean }) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
   addCommentToTask: (taskId: string, commentText: string, newStatus?: TaskStatus) => Promise<void>;
@@ -81,8 +82,8 @@ interface CdashContextType {
   userStatus: UserPresenceStatus;
   setUserStatus: (status: UserPresenceStatus) => void;
 
-  activeTab: 'dashboard' | 'tasks' | 'users' | 'requests';
-  setActiveTab: (tab: 'dashboard' | 'tasks' | 'users' | 'requests') => void;
+  activeTab: ActiveTab;
+  setActiveTab: (tab: ActiveTab) => void;
 
   isProfileOpen: boolean;
   setIsProfileOpen: (open: boolean) => void;
@@ -156,7 +157,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [themeColor, setThemeColorState] = useState<string>(getPersistedThemeColor);
   const [userStatus, setUserStatusState] = useState<UserPresenceStatus>('active');
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks' | 'users' | 'requests'>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -189,7 +190,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const fetchRemoteData = useCallback(async () => {
     try {
       const [remoteTasks, remoteUsers, remoteReqs] = await Promise.all([
-        api.fetchTasks(),
+        api.fetchTasks(currentUserId),
         api.fetchUsers(),
         api.fetchRequests(),
       ]);
@@ -467,7 +468,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
-  const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> & { isRequest?: boolean }) => {
     const now = new Date().toISOString();
     const newTask: Task = {
       ...taskData,
@@ -476,12 +477,15 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updatedAt: now,
     };
     setTasks((prev) => [newTask, ...prev]);
-    api.createTask(newTask);
+    api.createTask({ ...newTask, isRequest: taskData.isRequest });
 
+    const isRequest = taskData.isRequest || taskData.status === 'requested';
     const newNotif: AppNotification = {
       id: `notif_${Date.now()}`,
-      title: 'New Task Created',
-      message: `"${taskData.title}" was created and assigned.`,
+      title: isRequest ? 'Task Request Submitted' : 'New Task Created',
+      message: isRequest
+        ? `Task request "${taskData.title}" submitted to moderator.`
+        : `"${taskData.title}" was created and assigned.`,
       type: 'task_assigned',
       isRead: false,
       createdAt: now,
@@ -496,7 +500,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates, updatedAt: now } : t))
     );
-    api.updateTask(id, updates);
+    api.updateTask(id, { ...updates, userId: currentUser.id });
   };
 
   const updateTaskStatus = (id: string, status: TaskStatus) => {
@@ -504,7 +508,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, updatedAt: now } : t))
     );
-    api.updateTask(id, { status });
+    api.updateTask(id, { status, userId: currentUser.id });
 
     const task = tasks.find((t) => t.id === id);
     if (task) {
@@ -556,7 +560,7 @@ export const CdashProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
     );
-    api.updateTask(taskId, updates);
+    api.updateTask(taskId, { ...updates, userId: currentUser.id });
 
     if (formattedComment) {
       const newNotif: AppNotification = {

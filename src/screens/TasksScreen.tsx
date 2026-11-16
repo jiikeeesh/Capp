@@ -84,13 +84,21 @@ export const TasksScreen: React.FC = () => {
           </Text>
         </View>
 
-        {canAssign && (
+        {canAssign ? (
           <TouchableOpacity
             style={[styles.assignBtn, { backgroundColor: colors.brand }]}
             onPress={() => setIsNewTaskOpen(true)}
           >
             <Ionicons name="add" size={16} color="#ffffff" />
             <Text style={styles.assignBtnText}>Assign Task</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.assignBtn, { backgroundColor: colors.brand }]}
+            onPress={() => setIsNewTaskOpen(true)}
+          >
+            <Ionicons name="add" size={16} color="#ffffff" />
+            <Text style={styles.assignBtnText}>Request Task</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -131,7 +139,7 @@ export const TasksScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterChipRow}
         >
-          {['all', 'pending', 'in-progress', 'review', 'done'].map((st) => {
+          {['all', 'pending', 'in-progress', 'review', 'done', 'requested'].map((st) => {
             const isSelected = statusFilter === st;
             return (
               <TouchableOpacity
@@ -197,7 +205,9 @@ export const TasksScreen: React.FC = () => {
             <Ionicons name="checkbox-outline" size={38} color={colors.textMuted} />
             <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No tasks found</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              {canAssign ? 'Click "Assign Task" to create one.' : 'No tasks assigned to you yet.'}
+              {canAssign
+                ? 'Click "Assign Task" to create one.'
+                : 'No tasks assigned to you yet. Tap "Request Task" above to request a task from your moderator.'}
             </Text>
           </View>
         ) : (
@@ -227,6 +237,7 @@ export const TasksScreen: React.FC = () => {
       <TaskFormModal
         visible={isNewTaskOpen || !!editTask}
         taskToEdit={editTask}
+        isRequest={!canAssign && isNewTaskOpen}
         onClose={() => {
           setIsNewTaskOpen(false);
           setEditTask(null);

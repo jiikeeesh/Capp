@@ -2,13 +2,15 @@ export type Role = 'admin' | 'moderator' | 'user';
 
 export type UserPresenceStatus = 'active' | 'away' | 'busy' | 'dnd' | 'ooo' | 'offline';
 
-export type TaskStatus = 'pending' | 'in-progress' | 'review' | 'done';
+export type TaskStatus = 'pending' | 'in-progress' | 'review' | 'done' | 'requested';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 
 export type ThemeMode = 'light' | 'dark';
+
+export type ActiveTab = 'dashboard' | 'tasks' | 'calendar' | 'users' | 'requests';
 
 export interface User {
   id: string;
@@ -43,6 +45,8 @@ export interface Task {
   title: string;
   description: string;
   assignedById: string;
+  assignedByName?: string;
+  assignedByRole?: string;
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string;
@@ -74,7 +78,7 @@ export interface AppNotification {
   type: 'task_assigned' | 'task_updated' | 'request_pending' | 'request_resolved' | 'system';
   isRead: boolean;
   createdAt: string;
-  linkTab?: 'dashboard' | 'tasks' | 'users' | 'requests';
+  linkTab?: ActiveTab;
 }
 
 export interface StatusItem {

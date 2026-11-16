@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCdash } from '../context/CdashContext';
+import { WEB_BASE_URL } from '../services/api';
 
 export const LoginScreen: React.FC = () => {
   const { colors, currentUser, login, logout, isAuthenticated, setIsAuthenticated } = useCdash();
@@ -174,11 +175,7 @@ export const LoginScreen: React.FC = () => {
 
                 <TouchableOpacity
                   style={[styles.openWebBtn, { backgroundColor: colors.brand }]}
-                  onPress={() =>
-                    Linking.openURL(
-                      'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/login'
-                    )
-                  }
+                  onPress={() => Linking.openURL(WEB_BASE_URL)}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="open-outline" size={16} color="#ffffff" />
@@ -218,11 +215,7 @@ export const LoginScreen: React.FC = () => {
             {/* Web Portal Link Note */}
             <TouchableOpacity
               style={styles.webHintRow}
-              onPress={() =>
-                Linking.openURL(
-                  'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/login'
-                )
-              }
+              onPress={() => Linking.openURL(WEB_BASE_URL)}
               activeOpacity={0.7}
             >
               <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />

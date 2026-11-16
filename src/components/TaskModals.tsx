@@ -22,7 +22,7 @@ interface TaskDetailModalProps {
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onUpdateStatus }) => {
-  const { colors, users, onlineUsers, addCommentToTask } = useCdash();
+  const { colors, currentUser, users, onlineUsers, addCommentToTask } = useCdash();
 
   const [commentText, setCommentText] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -47,6 +47,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
   const assignees = users.filter((u) => task.assigneeIds.includes(u.id));
   const creator = users.find((u) => u.id === task.assignedById);
+  const isRequested = task.status === 'requested';
+  const canManage = currentUser.role !== 'user';
+  const assignerName = task.assignedByName || creator?.fullName || 'Moderator';
+  const assignerRole = task.assignedByRole || creator?.role || 'moderator';
 
   const handlePostComment = async () => {
     if (!commentText.trim()) return;
@@ -54,6 +58,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     await addCommentToTask(task.id, commentText.trim());
     setCommentText('');
     setIsPosting(false);
+  };
+
+  const handleApproveRequest = async () => {
+    setIsPosting(true);
+    await addCommentToTask(task.id, 'Task request approved and scheduled by moderator', 'pending');
+    setIsPosting(false);
+    onClose();
+  };
+
+  const handleDeclineRequest = async () => {
+    setIsPosting(true);
+    await addCommentToTask(task.id, 'Task request declined by moderator', 'done');
+    setIsPosting(false);
+    onClose();
   };
 
   return (
@@ -72,11 +90,55 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                {/* Task Request Action Banner for Moderators / Admins */}
+                {isRequested && canManage && (
+                  <View style={[styles.requestBannerAdmin, { backgroundColor: 'rgba(139, 92, 246, 0.08)', borderColor: 'rgba(139, 92, 246, 0.3)' }]}>
+                    <View style={styles.requestBannerHeader}>
+                      <Ionicons name="mail-unread" size={18} color="#8b5cf6" />
+                      <Text style={[styles.requestBannerTitle, { color: colors.textPrimary }]}>Task Request from User</Text>
+                    </View>
+                    <Text style={[styles.requestBannerBody, { color: colors.textSecondary }]}>
+                      This task was requested by <Text style={{ fontWeight: '700' }}>{assignees.map(a => a.fullName).join(', ') || 'user'}</Text>. You can approve and schedule it into team deliverables, or decline if not feasible.
+                    </Text>
+                    <View style={styles.requestBannerBtns}>
+                      <TouchableOpacity
+                        style={[styles.approveBtn, { backgroundColor: colors.brand }]}
+                        onPress={handleApproveRequest}
+                        disabled={isPosting}
+                      >
+                        <Ionicons name="checkmark" size={15} color="#ffffff" />
+                        <Text style={styles.approveBtnText}>Approve Task</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.declineBtn, { borderColor: colors.error, backgroundColor: colors.errorLight }]}
+                        onPress={handleDeclineRequest}
+                        disabled={isPosting}
+                      >
+                        <Ionicons name="close" size={15} color={colors.error} />
+                        <Text style={[styles.declineBtnText, { color: colors.error }]}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* Task Request Info Banner for Regular Users */}
+                {isRequested && !canManage && (
+                  <View style={[styles.requestBannerUser, { backgroundColor: 'rgba(139, 92, 246, 0.08)', borderColor: 'rgba(139, 92, 246, 0.25)' }]}>
+                    <Ionicons name="hourglass-outline" size={20} color="#8b5cf6" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.requestUserTitle, { color: colors.textPrimary }]}>Awaiting Moderator Review</Text>
+                      <Text style={[styles.requestUserBody, { color: colors.textSecondary }]}>
+                        Your task request was submitted to <Text style={{ fontWeight: '700' }}>{assignerName}</Text> and is waiting for approval.
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 {/* Status & Priority Row */}
                 <View style={styles.metaRow}>
                   <View style={[styles.pill, { backgroundColor: colors.bgSurfaceSub }]}>
                     <Text style={[styles.pillLabel, { color: colors.textMuted }]}>Status:</Text>
-                    <Text style={[styles.pillValue, { color: colors.brand }]}>
+                    <Text style={[styles.pillValue, { color: isRequested ? '#8b5cf6' : colors.brand }]}>
                       {task.status.replace('-', ' ').toUpperCase()}
                     </Text>
                   </View>
@@ -102,14 +164,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                   </Text>
                 </View>
 
-                {creator && (
-                  <View style={styles.section}>
-                    <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>ASSIGNED BY</Text>
-                    <Text style={[styles.sectionContent, { color: colors.textPrimary }]}>
-                      {creator.fullName} ({creator.role})
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>ASSIGNED BY / MODERATOR</Text>
+                  <Text style={[styles.sectionContent, { color: colors.textPrimary }]}>
+                    {assignerName} ({assignerRole})
+                  </Text>
+                </View>
 
                 {/* Assignees */}
                 <View style={styles.section}>
@@ -282,30 +342,61 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
   );
 };
 
-interface TaskFormModalProps {
+export interface TaskFormModalProps {
   visible: boolean;
-  taskToEdit: Task | null;
+  taskToEdit?: Task | null;
+  isRequest?: boolean;
+  initialDate?: string;
   onClose: () => void;
 }
 
-const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }> = ({ taskToEdit, onClose }) => {
+const TaskFormDialog: React.FC<{
+  taskToEdit?: Task | null;
+  isRequest?: boolean;
+  initialDate?: string;
+  onClose: () => void;
+}> = ({ taskToEdit, isRequest, initialDate, onClose }) => {
   const { colors, currentUser, users, onlineUsers, addTask, updateTask } = useCdash();
 
+  const isUser = currentUser.role === 'user';
+  const isRequestMode = isRequest || (isUser && !taskToEdit);
+  const moderators = users.filter((u) => u.role === 'moderator' || u.role === 'admin');
+  const defaultModId =
+    taskToEdit?.assignedById ||
+    (currentUser.createdBy && moderators.some((m) => m.id === currentUser.createdBy)
+      ? currentUser.createdBy
+      : moderators[0]?.id || currentUser.id);
+
+  const [selectedModerator, setSelectedModerator] = useState<string>(defaultModId);
   const onlineIds = useMemo(() => new Set(onlineUsers.map((o) => o.id)), [onlineUsers]);
 
   const [title, setTitle] = useState(taskToEdit ? taskToEdit.title : '');
   const [description, setDescription] = useState(taskToEdit ? taskToEdit.description : '');
   const [initialNote, setInitialNote] = useState('');
   const [priority, setPriority] = useState<TaskPriority>(taskToEdit ? taskToEdit.priority : 'medium');
-  const [status, setStatus] = useState<TaskStatus>(taskToEdit ? taskToEdit.status : 'pending');
+  const [status, setStatus] = useState<TaskStatus>(
+    isRequestMode ? 'requested' : taskToEdit ? taskToEdit.status : 'pending'
+  );
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>(
-    taskToEdit ? taskToEdit.assigneeIds : [currentUser.id]
+    isRequestMode ? [currentUser.id] : taskToEdit ? taskToEdit.assigneeIds : [currentUser.id]
   );
   const [dueDate, setDueDate] = useState(() =>
-    taskToEdit ? taskToEdit.dueDate : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    taskToEdit ? taskToEdit.dueDate : initialDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   );
 
+  // Assignable: Admins can assign anyone. Moderators can assign their own users and themselves.
+  const assignableUsers = useMemo(() => {
+    if (currentUser.role === 'admin') return users;
+    if (currentUser.role === 'moderator') {
+      return users.filter(
+        (u) => u.id === currentUser.id || (u.role === 'user' && u.createdBy?.includes(currentUser.id))
+      );
+    }
+    return [currentUser];
+  }, [users, currentUser]);
+
   const toggleAssignee = (id: string) => {
+    if (isRequestMode) return;
     setSelectedAssignees((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
@@ -324,18 +415,33 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
         dueDate,
       });
     } else {
-      const notesArray = initialNote.trim()
+      const notesArray = isRequestMode
+        ? [`[Task Requested on ${new Date().toLocaleDateString()}] ${initialNote.trim() || description.trim() || 'Task request submitted for moderator review.'}`]
+        : initialNote.trim()
         ? [`[${new Date().toLocaleDateString()} - ${currentUser.fullName}] ${initialNote.trim()}`]
         : [];
+
+      const targetAssignedById = isRequestMode ? selectedModerator : currentUser.id;
+      const targetAssigneeIds = isRequestMode
+        ? [currentUser.id]
+        : selectedAssignees.length > 0
+        ? selectedAssignees
+        : [currentUser.id];
+
+      const assignedMod = moderators.find((m) => m.id === targetAssignedById);
+
       addTask({
         title: title.trim(),
         description: description.trim(),
-        assignedById: currentUser.id,
+        assignedById: targetAssignedById,
+        assignedByName: assignedMod?.fullName || currentUser.fullName,
+        assignedByRole: assignedMod?.role || currentUser.role,
         priority,
-        status,
-        assigneeIds: selectedAssignees.length > 0 ? selectedAssignees : [currentUser.id],
+        status: isRequestMode ? 'requested' : status,
+        assigneeIds: targetAssigneeIds,
         dueDate,
         notes: notesArray,
+        isRequest: isRequestMode,
       });
     }
     onClose();
@@ -348,9 +454,20 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={[styles.dialog, { backgroundColor: colors.bgSurface, borderColor: colors.borderColor }]}>
               <View style={styles.dialogHeader}>
-                <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>
-                  {taskToEdit ? 'Edit Task' : 'Assign New Task'}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>
+                    {taskToEdit
+                      ? 'Edit Task'
+                      : isRequestMode
+                      ? 'Request Task from Moderator'
+                      : 'Assign New Task'}
+                  </Text>
+                  {isRequestMode && (
+                    <Text style={{ fontSize: 11.5, color: colors.textMuted, marginTop: 2 }}>
+                      Submit a task proposal for your moderator to review, schedule, and assign.
+                    </Text>
+                  )}
+                </View>
                 <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
                   <Ionicons name="close" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -370,7 +487,7 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                   ]}
                   value={title}
                   onChangeText={setTitle}
-                  placeholder="e.g. Upgrade API Endpoints"
+                  placeholder={isRequestMode ? "e.g. Conduct client report review" : "e.g. Upgrade API Endpoints"}
                   placeholderTextColor={colors.textMuted}
                 />
 
@@ -388,15 +505,17 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                   ]}
                   value={description}
                   onChangeText={setDescription}
-                  placeholder="Provide task scope and criteria..."
+                  placeholder="Provide task scope, goals, or requirements..."
                   placeholderTextColor={colors.textMuted}
                   multiline
                 />
 
-                {/* Initial Comment / Progress Note */}
+                {/* Initial Comment / Note */}
                 {!taskToEdit && (
                   <>
-                    <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Initial Comment / Note (Optional)</Text>
+                    <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>
+                      {isRequestMode ? 'Proposal Note (Optional)' : 'Initial Comment / Note (Optional)'}
+                    </Text>
                     <TextInput
                       style={[
                         styles.textInput,
@@ -409,7 +528,7 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                       ]}
                       value={initialNote}
                       onChangeText={setInitialNote}
-                      placeholder="Add an initial update or instruction..."
+                      placeholder={isRequestMode ? "Why is this task needed?" : "Add an initial update or instruction..."}
                       placeholderTextColor={colors.textMuted}
                       multiline
                     />
@@ -446,12 +565,12 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                   })}
                 </View>
 
-                {/* Status (if editing) */}
-                {taskToEdit && (
+                {/* Status (if editing and can manage) */}
+                {taskToEdit && !isRequestMode && (
                   <>
                     <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Status</Text>
                     <View style={styles.pillGroup}>
-                      {(['pending', 'in-progress', 'review', 'done'] as TaskStatus[]).map((s) => {
+                      {(['pending', 'in-progress', 'review', 'done', 'requested'] as TaskStatus[]).map((s) => {
                         const isSelected = status === s;
                         return (
                           <TouchableOpacity
@@ -497,42 +616,89 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                   placeholderTextColor={colors.textMuted}
                 />
 
-                {/* Assignees Selection */}
-                <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Assign Team Members</Text>
-                <View style={styles.assigneeList}>
-                  {users.map((u) => {
-                    const isSelected = selectedAssignees.includes(u.id);
-                    const isOnline = onlineIds.has(u.id);
-                    return (
-                      <TouchableOpacity
-                        key={u.id}
-                        style={[
-                          styles.assigneeRow,
-                          {
-                            backgroundColor: isSelected ? colors.brandLight : colors.bgSurfaceSub,
-                            borderColor: isSelected ? colors.brand : colors.borderColor,
-                          },
-                        ]}
-                        onPress={() => toggleAssignee(u.id)}
-                      >
-                        <Ionicons
-                          name={isSelected ? 'checkbox' : 'square-outline'}
-                          size={18}
-                          color={isSelected ? colors.brand : colors.textSecondary}
-                        />
-                        <Text style={[styles.assigneeRowText, { color: colors.textPrimary, flex: 1 }]}>
-                          {u.fullName} ({u.role})
-                        </Text>
-                        {isOnline && (
-                          <View style={[styles.onlineTag, { backgroundColor: colors.successLight }]}>
-                            <View style={[styles.onlineDotMini, { backgroundColor: colors.success }]} />
-                            <Text style={[styles.onlineTagText, { color: colors.success }]}>Online</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                {/* If Regular User Requesting: Moderator Selection */}
+                {isRequestMode ? (
+                  <>
+                    <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>
+                      Select Moderator to Request From *
+                    </Text>
+                    <View style={{ gap: 6, marginTop: 4 }}>
+                      {moderators.length === 0 ? (
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>No moderators available</Text>
+                      ) : (
+                        moderators.map((m) => {
+                          const isSelected = selectedModerator === m.id;
+                          const isCreator = currentUser.createdBy === m.id;
+                          return (
+                            <TouchableOpacity
+                              key={m.id}
+                              style={[
+                                styles.assigneeRow,
+                                {
+                                  backgroundColor: isSelected ? colors.brandLight : colors.bgSurfaceSub,
+                                  borderColor: isSelected ? colors.brand : colors.borderColor,
+                                  borderWidth: isSelected ? 1.5 : 1,
+                                },
+                              ]}
+                              onPress={() => setSelectedModerator(m.id)}
+                            >
+                              <Ionicons
+                                name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                                size={18}
+                                color={isSelected ? colors.brand : colors.textSecondary}
+                              />
+                              <Text style={[styles.assigneeRowText, { color: colors.textPrimary, flex: 1 }]}>
+                                {m.fullName} ({m.role}) {isCreator ? '— (Assigned Moderator)' : ''}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
+                      This request will be delivered to the selected moderator for review and calendar scheduling.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    {/* Assignees Selection for Admin/Moderator */}
+                    <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Assign Team Members</Text>
+                    <View style={styles.assigneeList}>
+                      {assignableUsers.map((u) => {
+                        const isSelected = selectedAssignees.includes(u.id);
+                        const isOnline = onlineIds.has(u.id);
+                        return (
+                          <TouchableOpacity
+                            key={u.id}
+                            style={[
+                              styles.assigneeRow,
+                              {
+                                backgroundColor: isSelected ? colors.brandLight : colors.bgSurfaceSub,
+                                borderColor: isSelected ? colors.brand : colors.borderColor,
+                              },
+                            ]}
+                            onPress={() => toggleAssignee(u.id)}
+                          >
+                            <Ionicons
+                              name={isSelected ? 'checkbox' : 'square-outline'}
+                              size={18}
+                              color={isSelected ? colors.brand : colors.textSecondary}
+                            />
+                            <Text style={[styles.assigneeRowText, { color: colors.textPrimary, flex: 1 }]}>
+                              {u.fullName} ({u.role})
+                            </Text>
+                            {isOnline && (
+                              <View style={[styles.onlineTag, { backgroundColor: colors.successLight }]}>
+                                <View style={[styles.onlineDotMini, { backgroundColor: colors.success }]} />
+                                <Text style={[styles.onlineTagText, { color: colors.success }]}>Online</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
               </ScrollView>
 
               <View style={[styles.dialogFooter, { borderTopColor: colors.borderColor }]}>
@@ -547,7 +713,9 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
                   style={[styles.btnPrimary, { backgroundColor: colors.brand }]}
                   onPress={handleSave}
                 >
-                  <Text style={styles.btnPrimaryText}>Save Task</Text>
+                  <Text style={styles.btnPrimaryText}>
+                    {isRequestMode ? 'Submit Task Request' : 'Save Task'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -558,10 +726,16 @@ const TaskFormDialog: React.FC<{ taskToEdit: Task | null; onClose: () => void }>
   );
 };
 
-export const TaskFormModal: React.FC<TaskFormModalProps> = ({ visible, taskToEdit, onClose }) => {
+export const TaskFormModal: React.FC<TaskFormModalProps> = ({ visible, taskToEdit, isRequest, initialDate, onClose }) => {
   if (!visible) return null;
   return (
-    <TaskFormDialog key={taskToEdit ? taskToEdit.id : 'new'} taskToEdit={taskToEdit} onClose={onClose} />
+    <TaskFormDialog
+      key={taskToEdit ? taskToEdit.id : (initialDate || 'new')}
+      taskToEdit={taskToEdit}
+      isRequest={isRequest}
+      initialDate={initialDate}
+      onClose={onClose}
+    />
   );
 };
 
@@ -571,8 +745,10 @@ interface StatusModalProps {
 }
 
 const StatusDialog: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClose }) => {
-  const { colors, addCommentToTask } = useCdash();
+  const { colors, currentUser, addCommentToTask } = useCdash();
 
+  const isUser = currentUser.role === 'user';
+  const isRequested = task.status === 'requested';
   const [selectedStatus, setSelectedStatus] = useState<TaskStatus>(task.status);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -584,9 +760,18 @@ const StatusDialog: React.FC<{ task: Task; onClose: () => void }> = ({ task, onC
     { id: 'done', label: 'Completed', icon: 'checkmark-circle-outline', color: colors.success },
   ];
 
+  if (task.status === 'requested') {
+    statuses.unshift({
+      id: 'requested',
+      label: 'Requested',
+      icon: 'mail-unread-outline',
+      color: '#8b5cf6',
+    });
+  }
+
   const handleSaveProgress = async () => {
     setIsSubmitting(true);
-    await addCommentToTask(task.id, commentText, selectedStatus);
+    await addCommentToTask(task.id, commentText, isUser && isRequested ? 'requested' : selectedStatus);
     setIsSubmitting(false);
     onClose();
   };
@@ -731,6 +916,78 @@ const styles = StyleSheet.create({
   },
   closeIcon: {
     padding: 4,
+  },
+  requestBannerAdmin: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    gap: 8,
+  },
+  requestBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  requestBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  requestBannerBody: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  requestBannerBtns: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  approveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  approveBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  declineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  declineBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  requestBannerUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  requestUserTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  requestUserBody: {
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   metaRow: {
     flexDirection: 'row',

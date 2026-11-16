@@ -2,7 +2,11 @@ import { User, Task, AccountRequest, UserPresenceStatus, PresenceUser } from '..
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
-  'https://cdash-kc83nmhot-jikesh2000t-4970s-projects.vercel.app/api';
+  'https://cdash-chi.vercel.app/api';
+
+export const WEB_BASE_URL =
+  process.env.EXPO_PUBLIC_WEB_URL ||
+  'https://cdash-chi.vercel.app';
 
 // Vercel Protection Bypass header
 export const VERCEL_BYPASS_SECRET =
@@ -49,9 +53,12 @@ export const api = {
     }
   },
 
-  async fetchTasks(): Promise<Task[] | null> {
+  async fetchTasks(userId?: string): Promise<Task[] | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/tasks`, {
+      const url = userId
+        ? `${API_BASE_URL}/tasks?userId=${encodeURIComponent(userId)}`
+        : `${API_BASE_URL}/tasks`;
+      const res = await fetch(url, {
         headers: getHeaders(),
       });
       if (!res.ok) return null;
@@ -61,7 +68,7 @@ export const api = {
     }
   },
 
-  async createTask(task: Partial<Task>): Promise<Task | null> {
+  async createTask(task: Partial<Task> & { isRequest?: boolean }): Promise<Task | null> {
     try {
       const res = await fetch(`${API_BASE_URL}/tasks`, {
         method: 'POST',
@@ -75,7 +82,7 @@ export const api = {
     }
   },
 
-  async updateTask(id: string, updates: Partial<Task>): Promise<Task | null> {
+  async updateTask(id: string, updates: Partial<Task> & { userId?: string }): Promise<Task | null> {
     try {
       const res = await fetch(`${API_BASE_URL}/tasks/${id}`, {
         method: 'PATCH',

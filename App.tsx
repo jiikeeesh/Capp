@@ -10,6 +10,7 @@ import { NotificationsModal } from './src/components/NotificationsModal';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { TasksScreen } from './src/screens/TasksScreen';
+import { CalendarScreen } from './src/screens/CalendarScreen';
 import { UsersScreen } from './src/screens/UsersScreen';
 import { RequestsScreen } from './src/screens/RequestsScreen';
 
@@ -43,6 +44,7 @@ const MainApp: React.FC = () => {
       <View style={[styles.mainBody, { backgroundColor: colors.bgPage }]}>
         {activeTab === 'dashboard' && <DashboardScreen />}
         {activeTab === 'tasks' && <TasksScreen />}
+        {activeTab === 'calendar' && <CalendarScreen />}
         {activeTab === 'users' && <UsersScreen />}
         {activeTab === 'requests' && <RequestsScreen />}
       </View>

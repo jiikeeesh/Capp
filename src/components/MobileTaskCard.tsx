@@ -58,6 +58,14 @@ export const MobileTaskCard: React.FC<MobileTaskCardProps> = ({
           bg: colors.successLight,
           color: colors.success,
         };
+      case 'requested':
+      default:
+        return {
+          icon: 'mail-unread-outline' as const,
+          label: 'Requested',
+          bg: 'rgba(139, 92, 246, 0.15)',
+          color: '#8b5cf6',
+        };
     }
   };
 

@@ -201,80 +201,131 @@ export const DashboardScreen: React.FC = () => {
       {/* Online Team Presence Widget */}
       <OnlinePresenceWidget />
 
-      {/* Quick Actions (Admin & Moderator) */}
-      {!isUserOnly && (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderColor },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
-          <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
-            Common workspace operations
-          </Text>
+      {/* Quick Actions */}
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.bgSurface, borderColor: colors.borderColor },
+        ]}
+      >
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Quick Actions</Text>
+        <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
+          Common workspace operations
+        </Text>
 
-          <View style={styles.quickActionsList}>
-            <TouchableOpacity
-              style={[styles.quickActionBtn, { backgroundColor: colors.brand }]}
-              onPress={() => setIsTaskFormOpen(true)}
-            >
-              <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
-              <Text style={styles.quickActionTextPrimary}>Assign New Task</Text>
-            </TouchableOpacity>
+        <View style={styles.quickActionsList}>
+          {isUserOnly ? (
+            <>
+              <TouchableOpacity
+                style={[styles.quickActionBtn, { backgroundColor: colors.brand }]}
+                onPress={() => setIsTaskFormOpen(true)}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
+                <Text style={styles.quickActionTextPrimary}>Request New Task</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.quickActionBtnOutline,
-                { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
-              ]}
-              onPress={() => {
-                if (currentUser.role === 'admin') {
-                  setIsUserFormOpen(true);
-                } else {
-                  setActiveTab('users');
-                }
-              }}
-            >
-              <Ionicons name="person-add-outline" size={18} color={colors.textPrimary} />
-              <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
-                {currentUser.role === 'admin' ? 'Create Account' : 'View Users'}
-              </Text>
-            </TouchableOpacity>
-
-            {currentUser.role === 'moderator' && (
               <TouchableOpacity
                 style={[
                   styles.quickActionBtnOutline,
                   { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
                 ]}
-                onPress={() => setIsRequestFormOpen(true)}
+                onPress={() => setActiveTab('calendar')}
               >
-                <Ionicons name="mail-outline" size={18} color={colors.textPrimary} />
+                <Ionicons name="calendar-outline" size={18} color={colors.textPrimary} />
                 <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
-                  Request New Account
+                  Open Calendar
                 </Text>
               </TouchableOpacity>
-            )}
 
-            {currentUser.role === 'admin' && pendingRequestsCount > 0 && (
               <TouchableOpacity
                 style={[
                   styles.quickActionBtnOutline,
-                  { borderColor: colors.warning, backgroundColor: colors.warningLight },
+                  { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
                 ]}
-                onPress={() => setActiveTab('requests')}
+                onPress={() => setActiveTab('tasks')}
               >
-                <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
-                <Text style={[styles.quickActionText, { color: colors.warning }]}>
-                  Review {pendingRequestsCount} Pending Request
-                  {pendingRequestsCount > 1 ? 's' : ''}
+                <Ionicons name="checkbox-outline" size={18} color={colors.textPrimary} />
+                <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
+                  View My Tasks
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.quickActionBtn, { backgroundColor: colors.brand }]}
+                onPress={() => setIsTaskFormOpen(true)}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
+                <Text style={styles.quickActionTextPrimary}>Assign New Task</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.quickActionBtnOutline,
+                  { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
+                ]}
+                onPress={() => setActiveTab('calendar')}
+              >
+                <Ionicons name="calendar-outline" size={18} color={colors.textPrimary} />
+                <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
+                  Open Calendar
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.quickActionBtnOutline,
+                  { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
+                ]}
+                onPress={() => {
+                  if (currentUser.role === 'admin') {
+                    setIsUserFormOpen(true);
+                  } else {
+                    setActiveTab('users');
+                  }
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color={colors.textPrimary} />
+                <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
+                  {currentUser.role === 'admin' ? 'Create Account' : 'View Users'}
+                </Text>
+              </TouchableOpacity>
+
+              {currentUser.role === 'moderator' && (
+                <TouchableOpacity
+                  style={[
+                    styles.quickActionBtnOutline,
+                    { borderColor: colors.borderColor, backgroundColor: colors.bgSurfaceSub },
+                  ]}
+                  onPress={() => setIsRequestFormOpen(true)}
+                >
+                  <Ionicons name="mail-outline" size={18} color={colors.textPrimary} />
+                  <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>
+                    Request New Account
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {currentUser.role === 'admin' && pendingRequestsCount > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.quickActionBtnOutline,
+                    { borderColor: colors.warning, backgroundColor: colors.warningLight },
+                  ]}
+                  onPress={() => setActiveTab('requests')}
+                >
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+                  <Text style={[styles.quickActionText, { color: colors.warning }]}>
+                    Review {pendingRequestsCount} Pending Request
+                    {pendingRequestsCount > 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
-      )}
+      </View>
 
       {/* Recent Tasks Card */}
       <View
@@ -334,6 +385,7 @@ export const DashboardScreen: React.FC = () => {
       <TaskFormModal
         visible={isTaskFormOpen}
         taskToEdit={null}
+        isRequest={isUserOnly}
         onClose={() => setIsTaskFormOpen(false)}
       />
 
